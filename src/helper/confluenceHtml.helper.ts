@@ -184,56 +184,106 @@ const initOngoingEpicsTable = (epics: EpicSummary[]): string => {
   let html = ONGOING_EPICS_TABLE_HEADERS;
 
   for (const epic of epics) {
-    html += `<tr>
-              <td>
-                  <ac:structured-macro ac:name="jira">
-                  <ac:parameter ac:name="key">${epic.key}</ac:parameter>
-                  </ac:structured-macro>
-              </td>
-              <td>${epic.dueDate || "-"}</td>
-              <td>${Math.round(epic.completion)}%</td>
-              <td></td>
-              <td></td>
-              <td></td>
-            </tr>`;
+    html += getEpicHtmlRow(epic.key, epic.dueDate || "-", epic.completion);
   }
 
   html += "</tbody></table>";
   return html;
 };
 
+const getEpicHtmlRow = (
+  key: string,
+  dueDate: string,
+  completion: number,
+  rdp?: string,
+  qrqc?: string,
+  actions?: string
+): string => {
+  return `<tr><td><ac:structured-macro ac:name="jira"><ac:parameter ac:name="key">${key}</ac:parameter></ac:structured-macro></td>
+                <td>${dueDate}</td>
+                <td>${Math.round(completion)}%</td>
+                <td>${rdp || ""}</td>
+                <td>${qrqc || ""}</td>
+                <td>${actions || ""}</td>
+            </tr>`;
+};
+
+const updateExistingOngoingEpicsHtmlRow = (
+  existingOngoingEpicsTableContent: string,
+  epic: EpicSummary
+) => {
+  const existingRowMatch = existingOngoingEpicsTableContent.match(
+    new RegExp(
+      `<tr><td>.*?<ac:parameter ac:name="key">${epic.key}</ac:parameter>(.*?)</tr>`,
+      "s"
+    )
+  );
+
+  if (!existingRowMatch || !existingRowMatch[1]) {
+    throw new Error(
+      `Epic ${epic.key} not found in existing ongoing epics table.`
+    );
+  }
+
+  const existingRowContent = existingRowMatch[1];
+
+  const updatedRowContent = existingRowContent
+    .match(/<td>(.*?)<\/td>/gs)
+    ?.map((cell, index) => {
+      console.log(`Updating cell ${index} for epic ${epic.key}:`, cell);
+      switch (index) {
+        case 0:
+          return epic.dueDate || "-";
+        case 1:
+          return `${Math.round(epic.completion)}%`;
+        default:
+          return cell.replace(/<\/?td>/g, "").trim();
+      }
+    });
+
+  return getEpicHtmlRow(
+    epic.key,
+    updatedRowContent?.[0] || "-",
+    parseFloat(updatedRowContent?.[1] || "0"),
+    updatedRowContent?.[2],
+    updatedRowContent?.[3],
+    updatedRowContent?.[4]
+  );
+};
+
 export const getConfluenceOngoingEpicsTableContent = (
   epics: EpicSummary[],
   page: string
 ): string => {
-  const existingTableMatch = page.match(/<table (.*?)>(.*?)<\/table>/s);
+  const existingTableMatch = page.match(/<table(.*?)>(.*?)<\/table>/gs);
 
-  if (!existingTableMatch || !existingTableMatch[3]) {
+  if (!existingTableMatch || !existingTableMatch[1]) {
     console.log(
       "No existing ongoing epics table found, initializing new table."
     );
     return initOngoingEpicsTable(epics);
   }
 
-  const existingOngoingEpicsTableContent = existingTableMatch[3];
+  const existingOngoingEpicsTableContent = existingTableMatch[1];
   const existingOngoingEpics =
     existingOngoingEpicsTableContent
       .match(/<tr><td>(.*?)<\/td>/gs)
       ?.map((cell) => {
         const match = cell.match(
-          /<ac:parameter ac:name="key">(.*?)<\/ac:parameter>>/
+          /<ac:parameter ac:name="key">(.*?)<\/ac:parameter>/
         );
-        if (match) {
-          console.log(match[1]);
-        }
         return match ? match[1].replace(/<\/?p>/g, "").trim() : "";
       }) || [];
 
   const newOngoingEpics = epics.filter(
     (epic) => !existingOngoingEpics.includes(epic.key)
   );
-  const potentialDoneEpics = epics.filter((epic) =>
+  const toUpdateEpics = epics.filter((epic) =>
     existingOngoingEpics.includes(epic.key)
+  );
+
+  const potentialDoneEpics = existingOngoingEpics.filter(
+    (key) => !epics.some((epic) => epic.key === key)
   );
 
   console.log(
@@ -246,6 +296,31 @@ export const getConfluenceOngoingEpicsTableContent = (
     "potentially done epics found:",
     potentialDoneEpics
   );
+  console.log(
+    toUpdateEpics.length,
+    "epics to update in existing ongoing epics table:",
+    toUpdateEpics
+  );
+  if (newOngoingEpics.length === 0 && toUpdateEpics.length === 0) {
+    console.log("No new ongoing epics or updates needed.");
+    return existingOngoingEpicsTableContent;
+  }
 
-  return initOngoingEpicsTable(epics);
+  const newContent = `
+${ONGOING_EPICS_TABLE_HEADERS}
+        ${newOngoingEpics
+          .map((epic) =>
+            getEpicHtmlRow(epic.key, epic.dueDate, epic.completion)
+          )
+          .join("")}
+        ${toUpdateEpics
+          .map((epic) =>
+            updateExistingOngoingEpicsHtmlRow(
+              existingOngoingEpicsTableContent,
+              epic
+            )
+          )
+          .join("")}`;
+
+  return `${newContent}</tbody></table>`;
 };
