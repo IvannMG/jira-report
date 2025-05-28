@@ -8,6 +8,7 @@ import {
   STORY_POINTS_FIELD,
 } from "../constant/jira.constant";
 import { SprintReport, Team } from "../type/jira.type";
+import { askQuestion } from "../util";
 
 export const getLatestSprints = async (team: Team) => {
   const closedSprints = await getAllClosedSprints(team.boardId);
@@ -43,7 +44,11 @@ export const getAllSprintReports = async (
     let total = 0;
     let done = 0;
     let doneTickets = 0;
-    const byAssignee: Record<string, { points: number; tickets: number }> = {};
+    const response = await askQuestion(
+      `Was the sprint goal for ${sprint.name} completed? (y/n): `
+    );
+    const isSprintGoalCompleted = response.toLowerCase() === "y";
+    const byAssignee: SprintReport["byAssignee"] = {};
 
     for (const issue of issues) {
       const points = issue.fields[STORY_POINTS_FIELD] || 0;
@@ -57,7 +62,13 @@ export const getAllSprintReports = async (
 
         const assignee = issue.fields.assignee?.displayName || "Unassigned";
         if (!byAssignee[assignee]) {
-          byAssignee[assignee] = { points: 0, tickets: 0 };
+          let workingDays = 10;
+          const response = await askQuestion(
+            `How many working days did ${assignee} work on the sprint ${sprint.name}? (default is 10): `
+          );
+          let daysInput = response || "10";
+          workingDays = parseInt(daysInput, 10);
+          byAssignee[assignee] = { points: 0, tickets: 0, workingDays };
         }
         byAssignee[assignee].points += points;
         byAssignee[assignee].tickets += 1;
@@ -67,6 +78,7 @@ export const getAllSprintReports = async (
     report.push({
       team: team.name,
       sprint: sprint.name,
+      isSprintGoalCompleted,
       totalPoints: total,
       sprintGoal,
       commitedPoints,

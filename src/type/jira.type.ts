@@ -10,9 +10,13 @@ export interface SprintReport {
   totalPoints: number;
   donePoints: number;
   sprintGoal: string;
+  isSprintGoalCompleted: boolean;
   commitedPoints: number;
   doneTickets: number;
-  byAssignee: Record<string, { points: number; tickets: number }>;
+  byAssignee: Record<
+    string,
+    { points: number; tickets: number; workingDays: number }
+  >;
 }
 
 export type EpicSummary = {

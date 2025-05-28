@@ -5,31 +5,23 @@ import {
   SPRINT_ASSIGNEE_TABLE_WIDTH,
 } from "../constant/jira.constant";
 import { EpicSummary, SprintReport, Team } from "../type/jira.type";
-import { askQuestion } from "../util";
 
 const getSprintReportHtmlRow = async (
   sprintReport: SprintReport,
   assignees: string[]
 ): Promise<string> => {
   let html = `<tr><td>${sprintReport.sprint}</td>`;
-  let sprintGoalEmoji;
-  const response = await askQuestion(
-    `Was the sprint goal for ${sprintReport.sprint} completed? (y/n): `
-  );
-  sprintGoalEmoji = response.toLowerCase() === "y" ? "✅" : "❌";
+
+  const sprintGoalEmoji = sprintReport.isSprintGoalCompleted ? "✅" : "❌";
 
   html += `<td>${sprintReport.sprintGoal} ${sprintGoalEmoji || ""}</td>`;
   html += `<td>${sprintReport.donePoints}</td>`;
   html += `<td>${sprintReport.commitedPoints}</td>`;
   for (const assignee of assignees) {
-    let workingDays = 10;
-    const response = await askQuestion(
-      `How many working days did ${assignee} work on the sprint ${sprintReport.sprint}? (default is 10): `
-    );
-    let daysInput = response || "10";
-    workingDays = parseInt(daysInput, 10);
-
-    const points = sprintReport.byAssignee[assignee]?.points;
+    const { points, workingDays } = sprintReport.byAssignee[assignee] || {
+      points: 0,
+      workingDays: 0,
+    };
     html += `<td>${points || 0} points
       ${
         workingDays > 0
