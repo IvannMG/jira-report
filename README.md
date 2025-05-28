@@ -26,15 +26,20 @@ TEAM_JIRA_PROJECT=FR - Supply
 yarn start
 ```
 
-You will be asked how many working days the dev from your team worked in the last 3 sprints and if the sprint goal was completed then it will add a table where you can see the results
+You will be asked how many working days the dev from your team worked in the last 3 sprints and if the sprint goal was completed, then it will add a table where you can see the results
+
 If you want more than 3 sprints change the constant `export const PAST_SPRINT_FETCH_COUNT` in `src/constant/jira.constant.ts`
 
 The results are based on jira API
 
 Every time a sprint is closed you can launched the command again and it will add a new line
+
 ⚠️ to update an existing page the script will kind of parse the html which was provided last update (kind of beacause it's not exactly the same, but it's not the final html rendered in the page either 🤷‍♂️)
+
 This parsing is based on shady regex so the results might not be consistant in time if confluence make an update for instance
 
-The second array will show evey ongoing epics
+The second array will show every ongoing epics
+
 TO AUTOMATIZE: when an epic is done move it in another table with the existing column
+
 TO AUTOMATIZE: update the epic array instead of recreating it
