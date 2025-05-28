@@ -1,9 +1,6 @@
 import axios from "axios";
 import * as dotenv from "dotenv";
 import {
-  CONFLUENCE_AUTH,
-  CONFLUENCE_BASE_URL,
-  CONFLUENCE_PAGE_ID,
   EPIC_COMPLETION_FIELD,
   EPIC_DUE_DATE_FIELD,
   JIRA_AUTH,
@@ -22,7 +19,6 @@ import { EpicSummary, SprintReport, Team } from "./type/jira.type";
 import { askQuestion } from "./util";
 import { updateConfluencePage } from "./api/confluence";
 import { getConfluencePageContent } from "./api/confluence";
-import { parse } from "path";
 
 dotenv.config();
 async function getSprintReports(
