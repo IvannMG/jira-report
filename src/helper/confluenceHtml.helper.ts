@@ -251,21 +251,16 @@ const updateExistingOngoingEpicsHtmlRow = (
   );
 };
 
-export const getConfluenceOngoingEpicsTableContent = (
-  epics: EpicSummary[],
-  page: string
-): string => {
+export const getExistingOngoingEpics = (page: string): string[] => {
   const existingTableMatch = page.match(/<table(.*?)>(.*?)<\/table>/gs);
 
   if (!existingTableMatch || !existingTableMatch[1]) {
-    console.log(
-      "No existing ongoing epics table found, initializing new table."
-    );
-    return initOngoingEpicsTable(epics);
+    console.log("No existing ongoing epics table found.");
+    return [];
   }
 
   const existingOngoingEpicsTableContent = existingTableMatch[1];
-  const existingOngoingEpics =
+  return (
     existingOngoingEpicsTableContent
       .match(/<tr><td>(.*?)<\/td>/gs)
       ?.map((cell) => {
@@ -273,7 +268,28 @@ export const getConfluenceOngoingEpicsTableContent = (
           /<ac:parameter ac:name="key">(.*?)<\/ac:parameter>/
         );
         return match ? match[1].replace(/<\/?p>/g, "").trim() : "";
-      }) || [];
+      }) || []
+  );
+};
+
+export const getConfluenceOngoingEpicsTableContent = (
+  epics: EpicSummary[],
+  existingOngoingEpics: string[],
+  page: string
+): string => {
+  const existingTableMatch = page.match(/<table(.*?)>(.*?)<\/table>/gs);
+
+  if (
+    existingOngoingEpics.length === 0 ||
+    !existingTableMatch ||
+    !existingTableMatch[1]
+  ) {
+    console.log(
+      "No existing ongoing epics table found, initializing new table."
+    );
+    return initOngoingEpicsTable(epics);
+  }
+  const existingOngoingEpicsTableContent = existingTableMatch[1];
 
   const newOngoingEpics = epics.filter(
     (epic) => !existingOngoingEpics.includes(epic.key)
@@ -282,20 +298,12 @@ export const getConfluenceOngoingEpicsTableContent = (
     existingOngoingEpics.includes(epic.key)
   );
 
-  const potentialDoneEpics = existingOngoingEpics.filter(
-    (key) => !epics.some((epic) => epic.key === key)
-  );
-
   console.log(
     newOngoingEpics.length,
     "new ongoing epics found:",
     newOngoingEpics
   );
-  console.log(
-    potentialDoneEpics.length,
-    "potentially done epics found:",
-    potentialDoneEpics
-  );
+
   console.log(
     toUpdateEpics.length,
     "epics to update in existing ongoing epics table:",

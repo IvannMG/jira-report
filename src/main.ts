@@ -15,6 +15,7 @@ import {
   getConfluenceHtmlPageContent,
   getConfluenceOngoingEpicsTableContent,
   getConfluenceSprintReportTable,
+  getExistingOngoingEpics,
   getExistingSprintReportsSprint,
 } from "./helper/confluenceHtml.helper";
 
@@ -49,8 +50,14 @@ async function main() {
     await getConfluenceSprintReportTable(sprintReports, page);
 
   const ongoingEpics = await getOngoingEpics(team);
+  const existingOngoingEpics = getExistingOngoingEpics(page);
   const confluenceOngoingEpicsTableContent =
-    getConfluenceOngoingEpicsTableContent(ongoingEpics, page);
+    getConfluenceOngoingEpicsTableContent(
+      ongoingEpics,
+      existingOngoingEpics,
+      page
+    );
+
   const confluencePageContent = getConfluenceHtmlPageContent(
     team,
     confluenceSprintReportTableContent,
