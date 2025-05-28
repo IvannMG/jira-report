@@ -5,6 +5,12 @@ yarn install
 
 ```
 
+### Prerequisites
+
+- Create a new confluence page where the results will be posted and take the id of the page (last number in the url)
+- take the team board id (last part of the url path when on the board page)
+- take the project name "FR - {name of your team}" you have it in the project menu in jira
+
 ### fill dotenv file
 
 ```
