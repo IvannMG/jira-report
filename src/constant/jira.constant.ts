@@ -1,3 +1,7 @@
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
 export const JIRA_BASE_URL = process.env.JIRA_BASE_URL!;
 export const JIRA_AUTH = {
   username: process.env.JIRA_EMAIL!,

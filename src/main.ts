@@ -1,4 +1,3 @@
-import * as dotenv from "dotenv";
 import {
   TEAM_BOARD_ID,
   TEAM_JIRA_PROJECT,
@@ -17,8 +16,6 @@ import {
   getConfluenceOngoingEpicsTableContent,
   getConfluenceSprintReportTable,
 } from "./helper/confluenceHtml.helper";
-
-dotenv.config();
 
 async function main() {
   if (!TEAM_NAME) {
