@@ -35,11 +35,10 @@ The results are based on jira API
 Every time a sprint is closed you can launched the command again and it will add a new line
 
 ⚠️ to update an existing page the script will kind of parse the html which was provided last update (kind of beacause it's not exactly the same, but it's not the final html rendered in the page either 🤷‍♂️)
+This is of course not really robust (but this is confluence for you) so if it messes things up you can restore an earlier version of the page and fix the script
 
 This parsing is based on shady regex so the results might not be consistant in time if confluence make an update for instance
 
-The second array will show every ongoing epics
+The second array will show every ongoing epics, you can put yoour RDP/QRQC/Actions there, it will try to update due date and completion every time the script is reloaded
 
 TO AUTOMATIZE: when an epic is done move it in another table with the existing column
-
-TO AUTOMATIZE: update the epic array instead of recreating it
