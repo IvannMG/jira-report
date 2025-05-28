@@ -15,6 +15,7 @@ import {
   getConfluenceHtmlPageContent,
   getConfluenceOngoingEpicsTableContent,
   getConfluenceSprintReportTable,
+  getExistingSprintReportsSprint,
 } from "./helper/confluenceHtml.helper";
 
 async function main() {
@@ -35,8 +36,15 @@ async function main() {
     project: TEAM_JIRA_PROJECT,
   };
   const latestSprints = await getLatestSprints(team);
-  const sprintReports = await getAllSprintReports(team, latestSprints);
   const page = await getConfluencePageContent();
+  const existingSprints = getExistingSprintReportsSprint(page);
+  const newSprints = latestSprints.filter(
+    (sprint) =>
+      !existingSprints.some(
+        (existingSprintId) => existingSprintId === sprint.name
+      )
+  );
+  const sprintReports = await getAllSprintReports(team, newSprints);
   const confluenceSprintReportTableContent =
     await getConfluenceSprintReportTable(sprintReports, page);
 

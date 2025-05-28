@@ -61,6 +61,28 @@ const initAssigneeTable = async (reports: SprintReport[]): Promise<string> => {
   return html;
 };
 
+export const getExistingSprintReportsSprint = (
+  existingPageContent: string
+): string[] => {
+  const sprintReportTableMatch = existingPageContent.match(
+    /<table (.*?)>(.*?)<\/table>/s
+  );
+  if (!sprintReportTableMatch || !sprintReportTableMatch[2]) {
+    console.log("No existing sprint assignee table found");
+    return [];
+  }
+
+  const sprintReportTableContent = sprintReportTableMatch[2];
+
+  return (
+    sprintReportTableContent.match(/<tr><td>(.*?)<\/td>/gs)?.map((cell) => {
+      const match = cell.match(/<td>(.*?)<\/td>/);
+
+      return match ? match[1].replace(/<\/?p>/g, "").trim() : "";
+    }) || []
+  );
+};
+
 export const getConfluenceSprintReportTable = async (
   reports: SprintReport[],
   existingPageContent: string
@@ -89,26 +111,15 @@ export const getConfluenceSprintReportTable = async (
     (header) => !NON_ASSIGNEE_COLUMNS.includes(header)
   );
 
-  const existingSprints =
-    sprintReportTableContent.match(/<tr><td>(.*?)<\/td>/gs)?.map((cell) => {
-      const match = cell.match(/<td>(.*?)<\/td>/);
-
-      return match ? match[1].replace(/<\/?p>/g, "").trim() : "";
-    }) || [];
-
-  if (!existingAssigneeHeaders?.length || !existingSprints?.length) {
+  if (!existingAssigneeHeaders?.length) {
     console.log(
       "No existing assignee headers or sprints found, initializing new table.",
-      `${existingAssigneeHeaders.length} headers, ${existingSprints.length} sprints`
+      `${existingAssigneeHeaders.length} headers, ${reports.length} sprints`
     );
     return await initAssigneeTable(reports);
   }
 
-  const newSprintReports = reports.filter(
-    (report) => !existingSprints.includes(report.sprint)
-  );
-
-  const newAssignees = newSprintReports.reduce((acc, report) => {
+  const newAssignees = reports.reduce((acc, report) => {
     const sprintAssignees = Object.keys(report.byAssignee);
     for (const assignee of sprintAssignees) {
       if (!acc.includes(assignee) && !existingAssignees.includes(assignee)) {
@@ -138,19 +149,15 @@ export const getConfluenceSprintReportTable = async (
 
   const allAssignees = [...existingAssignees, ...newAssignees];
 
-  if (newSprintReports.length === 0) {
+  if (reports.length === 0) {
     console.log("No new sprint reports to add.");
     return `<table data-table-width="${SPRINT_ASSIGNEE_TABLE_WIDTH}" data-layout="center">${newPageContent}</table>`;
   }
 
-  console.log(
-    `Found ${newSprintReports.length} new sprint reports to add.`,
-    newSprintReports,
-    existingSprints
-  );
+  console.log(`Found ${reports.length} new sprint reports to add.`, reports);
 
   // Add new sprint reports
-  for (const sprintReport of newSprintReports.reverse()) {
+  for (const sprintReport of reports.reverse()) {
     const row = await getSprintReportHtmlRow(sprintReport, allAssignees);
 
     newPageContent = newPageContent.replace("</tr><tr>", `</tr>${row}<tr>`);
@@ -173,28 +180,72 @@ export const getConfluenceHtmlPageContent = (
       `;
 };
 
-export const getConfluenceOngoingEpicsTableContent = (
-  epics: EpicSummary[],
-  page: string
-): string => {
+const initOngoingEpicsTable = (epics: EpicSummary[]): string => {
   let html = ONGOING_EPICS_TABLE_HEADERS;
 
   for (const epic of epics) {
     html += `<tr>
-          <td>
-              <ac:structured-macro ac:name="jira">
-              <ac:parameter ac:name="key">${epic.key}</ac:parameter>
-              </ac:structured-macro>
-          </td>
-          <td>${epic.dueDate || "-"}</td>
-          <td>${Math.round(epic.completion)}%</td>
-          <td></td>
-          <td></td>
-          <td></td>
-        </tr>`;
+              <td>
+                  <ac:structured-macro ac:name="jira">
+                  <ac:parameter ac:name="key">${epic.key}</ac:parameter>
+                  </ac:structured-macro>
+              </td>
+              <td>${epic.dueDate || "-"}</td>
+              <td>${Math.round(epic.completion)}%</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>`;
   }
 
   html += "</tbody></table>";
-
   return html;
+};
+
+export const getConfluenceOngoingEpicsTableContent = (
+  epics: EpicSummary[],
+  page: string
+): string => {
+  const existingTableMatch = page.match(/<table (.*?)>(.*?)<\/table>/s);
+
+  if (!existingTableMatch || !existingTableMatch[3]) {
+    console.log(
+      "No existing ongoing epics table found, initializing new table."
+    );
+    return initOngoingEpicsTable(epics);
+  }
+
+  const existingOngoingEpicsTableContent = existingTableMatch[3];
+  const existingOngoingEpics =
+    existingOngoingEpicsTableContent
+      .match(/<tr><td>(.*?)<\/td>/gs)
+      ?.map((cell) => {
+        const match = cell.match(
+          /<ac:parameter ac:name="key">(.*?)<\/ac:parameter>>/
+        );
+        if (match) {
+          console.log(match[1]);
+        }
+        return match ? match[1].replace(/<\/?p>/g, "").trim() : "";
+      }) || [];
+
+  const newOngoingEpics = epics.filter(
+    (epic) => !existingOngoingEpics.includes(epic.key)
+  );
+  const potentialDoneEpics = epics.filter((epic) =>
+    existingOngoingEpics.includes(epic.key)
+  );
+
+  console.log(
+    newOngoingEpics.length,
+    "new ongoing epics found:",
+    newOngoingEpics
+  );
+  console.log(
+    potentialDoneEpics.length,
+    "potentially done epics found:",
+    potentialDoneEpics
+  );
+
+  return initOngoingEpicsTable(epics);
 };
