@@ -5,11 +5,15 @@ import {
   CONFLUENCE_PAGE_ID,
 } from "../constant/jira.constant";
 
+const confluenceApi = axios.create({
+  baseURL: CONFLUENCE_BASE_URL,
+  auth: CONFLUENCE_AUTH,
+});
+
 export async function getConfluencePageContent(): Promise<string> {
-  const response = await axios.get(
-    `${CONFLUENCE_BASE_URL}/rest/api/content/${CONFLUENCE_PAGE_ID}`,
+  const response = await confluenceApi.get(
+    `/rest/api/content/${CONFLUENCE_PAGE_ID}`,
     {
-      auth: CONFLUENCE_AUTH,
       params: { expand: "body.storage" },
     }
   );
@@ -17,30 +21,25 @@ export async function getConfluencePageContent(): Promise<string> {
 }
 
 export async function updateConfluencePage(content: string) {
-  const page = await axios.get(
-    `${CONFLUENCE_BASE_URL}/rest/api/content/${CONFLUENCE_PAGE_ID}`,
+  const page = await confluenceApi.get(
+    `/rest/api/content/${CONFLUENCE_PAGE_ID}`,
     {
-      auth: CONFLUENCE_AUTH,
-      params: { expand: "body.storage,version" },
+      params: { expand: "version" },
     }
   );
 
   const version = page.data.version.number + 1;
 
-  await axios.put(
-    `${CONFLUENCE_BASE_URL}/rest/api/content/${CONFLUENCE_PAGE_ID}`,
-    {
-      id: CONFLUENCE_PAGE_ID,
-      type: "page",
-      title: page.data.title,
-      version: { number: version },
-      body: {
-        storage: {
-          value: `${content}`,
-          representation: "storage",
-        },
+  await confluenceApi.put(`/rest/api/content/${CONFLUENCE_PAGE_ID}`, {
+    id: CONFLUENCE_PAGE_ID,
+    type: "page",
+    title: page.data.title,
+    version: { number: version },
+    body: {
+      storage: {
+        value: `${content}`,
+        representation: "storage",
       },
     },
-    { auth: CONFLUENCE_AUTH }
-  );
+  });
 }
