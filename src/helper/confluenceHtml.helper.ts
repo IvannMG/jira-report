@@ -230,7 +230,6 @@ const updateExistingOngoingEpicsHtmlRow = (
   const updatedRowContent = existingRowContent
     .match(/<td>(.*?)<\/td>/gs)
     ?.map((cell, index) => {
-      console.log(`Updating cell ${index} for epic ${epic.key}:`, cell);
       switch (index) {
         case 0:
           return epic.dueDate || "-";
