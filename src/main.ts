@@ -2,10 +2,8 @@ import * as dotenv from "dotenv";
 import {
   NON_ASSIGNEE_COLUMNS,
   ONGOING_EPICS_TABLE_HEADERS,
-  PAST_SPRINT_FETCH_COUNT,
   SPRINT_ASSIGNEE_TABLE_START,
   SPRINT_ASSIGNEE_TABLE_WIDTH,
-  STORY_POINTS_FIELD,
   TEAM_BOARD_ID,
   TEAM_JIRA_PROJECT,
   TEAM_NAME,
@@ -14,69 +12,13 @@ import { EpicSummary, SprintReport, Team } from "./type/jira.type";
 import { askQuestion } from "./util";
 import { updateConfluencePage } from "./api/confluence";
 import { getConfluencePageContent } from "./api/confluence";
+import { getOngoingEpics } from "./api/jira";
 import {
-  getAllClosedSprints,
-  getJiraSprintIssues,
-  getJiraSprintStats,
-  getOngoingEpics,
-} from "./api/jira";
+  getAllSprintReports,
+  getLatestSprints,
+} from "./helper/sprintReport.helper";
 
 dotenv.config();
-async function getSprintReports(
-  team: Team,
-  sprints: { id: string; name: string }[]
-): Promise<SprintReport[]> {
-  const report: SprintReport[] = [];
-
-  for (const sprint of sprints) {
-    const sprintStats = await getJiraSprintStats(team.boardId, sprint.id);
-    const {
-      contents: {
-        completedIssuesInitialEstimateSum: { value: commitedPoints },
-        completedIssuesEstimateSum: { value: donePoints },
-      },
-      sprint: { goal: sprintGoal },
-    } = sprintStats;
-
-    const issues = await getJiraSprintIssues(team.boardId, sprint.id);
-    let total = 0;
-    let done = 0;
-    let doneTickets = 0;
-    const byAssignee: Record<string, { points: number; tickets: number }> = {};
-
-    for (const issue of issues) {
-      const points = issue.fields[STORY_POINTS_FIELD] || 0;
-
-      total += points;
-
-      const isDone = issue.fields.status.name.toLowerCase() === "done";
-      if (isDone) {
-        done += points;
-        doneTickets += 1;
-
-        const assignee = issue.fields.assignee?.displayName || "Unassigned";
-        if (!byAssignee[assignee]) {
-          byAssignee[assignee] = { points: 0, tickets: 0 };
-        }
-        byAssignee[assignee].points += points;
-        byAssignee[assignee].tickets += 1;
-      }
-    }
-
-    report.push({
-      team: team.name,
-      sprint: sprint.name,
-      totalPoints: total,
-      sprintGoal,
-      commitedPoints,
-      donePoints,
-      doneTickets,
-      byAssignee,
-    });
-  }
-
-  return report;
-}
 
 async function getSprintReportHtmlRow(
   sprintReport: SprintReport,
@@ -278,20 +220,11 @@ async function main() {
     boardId: parseInt(TEAM_BOARD_ID, 10),
     project: TEAM_JIRA_PROJECT,
   };
-
-  const closedSprints = await getAllClosedSprints(team.boardId);
-  const sorted = closedSprints.sort(
-    (a: any, b: any) =>
-      new Date(b.endDate).getTime() - new Date(a.endDate).getTime()
-  );
-  const latestSprints = sorted.slice(0, PAST_SPRINT_FETCH_COUNT);
-  latestSprints.forEach((sprint: any) => {
-    console.log(`Sprint: ${sprint.name} (ID: ${sprint.id})`);
-  });
-  const report = await getSprintReports(team, latestSprints);
+  const latestSprints = await getLatestSprints(team);
+  const sprintReports = await getAllSprintReports(team, latestSprints);
   const page = await getConfluencePageContent();
   const confluenceAssigneePageContent = await toConfluenceSprintAssigneeTable(
-    report,
+    sprintReports,
     page
   );
 
